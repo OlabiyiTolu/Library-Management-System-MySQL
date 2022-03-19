@@ -327,32 +327,38 @@ SELECT * FROM tbl_book_authors;
 END$$
 DELIMITER ;
 
+CALL db_LibraryManagement.LibraryManagementSystemProcedure() 
+
  /* #1- How many copies of the book titled "The Lost Tribe" are owned by the library branch whose name is "Sharpstown"? */ 
+
 DELIMITER // 
-CREATE PROCEDURE db_LibraryManagement.bookCopiesAtAllSharpstown()  
+CREATE PROCEDURE db_LibraryManagement.bookCopiesAtAllSharpstown(IN book_Title VARCHAR(255), branch_Name VARCHAR(255))  
 BEGIN 
-SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchName AS Branch_Name, 
+SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchName AS branch_Name, 
             copies.book_copies_No_Of_Copies AS Number_of_Copies, 
             book.book_Title AS Book_Title 
             FROM tbl_book_copies AS copies 
                          INNER JOIN tbl_book AS book ON copies.book_copies_BookID = book.book_BookID 
                          INNER JOIN tbl_library_branch AS branch ON book_copies_BranchID = branch.library_branch_BranchID 
-            WHERE book.book_Title = 'The Lost Tribe' AND branch.library_branch_BranchName = 'Sharpstown'; 
+            WHERE book.book_Title = book_Title AND branch.library_branch_BranchName = branch_Name;
  END//
  DELIMITER ;
-  
+CALL db_LibraryManagement.bookCopiesAtAllSharpstown('The Lost Tribe', 'Sharpstown');
+
  /* #2- How many copies of the book titled "The Lost Tribe" are owned by each library branch? */ 
  DELIMITER //  
- CREATE PROCEDURE db_LibraryManagement.bookCopiesAtAllBranches() 
+ CREATE PROCEDURE db_LibraryManagement.bookCopiesAtAllBranches(IN book_Title VARCHAR(255)) 
  BEGIN
  SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchName AS Branch_Name, 
             copies.book_copies_No_Of_Copies AS Number_of_Copies, book.book_Title AS Book_Title
             FROM tbl_book_copies AS copies 
                          INNER JOIN tbl_book AS book ON copies.book_copies_BookID = book.book_BookID 
                          INNER JOIN tbl_library_branch AS branch ON book_copies_BranchID = branch.library_branch_BranchID 
-            WHERE book.book_Title = 'The Lost Tribe';  
+            WHERE book.book_Title = book_Title;  
  END// 
  DELIMITER ; 
+
+CALL db_LibraryManagement.bookCopiesAtAllBranches('The Lost Tribe');
     
  /* #3- Retrieve the names of all borrowers who do not have any books checked out. */ 
  DELIMITER //                   
@@ -364,10 +370,12 @@ SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchNam
                  WHERE book_loans_CardNo = borrower_CardNo); 
  END//
  DELIMITER ;  
-  
+
+CALL db_LibraryManagement.NoLoans();
+
  /* #4- For each book that is loaned out from the "Sharpstown" branch and whose DueDate is today, retrieve the book title, the borrower's name, and the borrower's address.  */ 
  DELIMITER //  
- CREATE PROCEDURE db_LibraryManagement.LoanersInfo()  
+ CREATE PROCEDURE db_LibraryManagement.LoanersInfo(book_loan_DueDate VARCHAR(255), library_branch_Name VARCHAR(255))  
  BEGIN
 	SELECT Branch.library_branch_BranchName AS Branch_Name,  Book.book_Title AS Book_Name, 
             Borrower.borrower_BorrowerName AS Borrower_Name, Borrower.borrower_BorrowerAddress AS Borrower_Address, 
@@ -376,21 +384,23 @@ SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchNam
                          INNER JOIN tbl_book AS Book ON Loans.book_loans_BookID = Book.book_BookID 
                          INNER JOIN tbl_borrower AS Borrower ON Loans.book_loans_CardNo = Borrower.borrower_CardNo 
                          INNER JOIN tbl_library_branch AS Branch ON Loans.book_loans_BranchID = Branch.library_branch_BranchID 
-                 WHERE Loans.book_loans_DueDate = NULL AND Branch.library_branch_BranchName = 'Sharpstown'; 
+                 WHERE Loans.book_loans_DueDate = book_loan_DueDate AND Branch.library_branch_BranchName = library_branch_Name; 
  END// 
  DELIMITER ;   
+ CALL db_LibraryManagement.LoanersInfo(NULL, 'Sharpstown');
   
  /* #5- For each library branch, retrieve the branch name and the total number of books loaned out from that branch.  */ 
  DELIMITER //  
  CREATE PROCEDURE db_LibraryManagement.TotalLoansPerBranch() 
  BEGIN
- SELECT  Branch.library_branch_BranchName AS Branch_Name, COUNT (Loans.book_loans_BranchID) AS Total_Loans 
+ SELECT  Branch.library_branch_BranchName AS Branch_Name, COUNT(Loans.book_loans_BranchID) AS Total_Loans 
                  FROM tbl_book_loans AS Loans 
                          INNER JOIN tbl_library_branch AS Branch ON Loans.book_loans_BranchID = Branch.library_branch_BranchID 
                          GROUP BY library_branch_BranchName; 
  END// 
  DELIMITER ;
-  
+CALL db_LibraryManagement.TotalLoansPerBranch();
+
  /* #6- Retrieve the names, addresses, and number of books checked out for all borrowers who have more than five books checked out. */ 
  DELIMITER //  
  CREATE PROCEDURE db_LibraryManagement.BooksLoanedOut()
@@ -404,16 +414,20 @@ SELECT copies.book_copies_BranchID AS Branch_ID, branch.library_branch_BranchNam
  END//
  DELIMITER ;  
   
+CALL db_LibraryManagement.BooksLoanedOut();  
+  
  /* #7- For each book authored by "Stephen King", retrieve the title and the number of copies owned by the library branch whose name is "Central".*/ 
  DELIMITER //  
- CREATE PROCEDURE db_LibraryManagement.BookbyAuthorandBranch() 
+ CREATE PROCEDURE db_LibraryManagement.BookbyAuthorandBranch(library_BranchName VARCHAR(255), book_AuthorName VARCHAR(255)) 
  BEGIN 
          SELECT Branch.library_branch_BranchName AS Branch_Name, Book.book_Title AS Title, Copies.book_copies_No_Of_Copies AS Number_of_Copies 
                     FROM tbl_book_authors AS Authors 
                                  INNER JOIN tbl_book AS Book ON Authors.book_authors_BookID = Book.book_BookID 
                                  INNER JOIN tbl_book_copies AS Copies ON Authors.book_authors_BookID = Copies.book_copies_BookID 
                                  INNER JOIN tbl_library_branch AS Branch ON Copies.book_copies_BranchID = Branch.library_branch_BranchID 
-                         WHERE Branch.library_branch_BranchName = 'Central' AND Authors.book_authors_AuthorName = 'Stephen King';
+                         WHERE Branch.library_branch_BranchName = library_BranchName AND Authors.book_authors_AuthorName = book_AuthorName;
  END//
  DELIMITER ;  
+ 
+ CALL db_LibraryManagement.BookbyAuthorandBranch('Central', 'Stephen King');
  /* ==================================== STORED PROCEDURE QUERY QUESTIONS =================================== */
